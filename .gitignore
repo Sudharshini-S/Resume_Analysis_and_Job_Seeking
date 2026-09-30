@@ -8,9 +8,8 @@ dist/
 dist-ssr/
 *.local
 
-# Firebase credentials with real keys (DO NOT COMMIT)
-src/config/firebase.js
-src/config/firebase.ts
+# Firebase local files
+# (src/config/firebase.js is required for builds)
 
 # Environment variables
 .env
