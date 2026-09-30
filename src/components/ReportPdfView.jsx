@@ -1,26 +1,38 @@
-import React, { useState } from 'react';
-import { X, Printer, CheckCircle2, AlertTriangle, ShieldCheck, Download, Loader2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, Award, Download, Loader2, CheckCircle2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+function getVerificationId(seed = '') {
+  let hash = 0;
+  const str = seed || 'TalentTrackCertificate';
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) % 1000000;
+  }
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const l1 = letters[Math.abs(hash) % 26];
+  const l2 = letters[Math.abs(Math.floor(hash / 26)) % 26];
+  const num = 1000 + (Math.abs(hash) % 9000);
+  return `${l1}${l2}${num}`;
+}
 
 export default function ReportPdfView({ isOpen, onClose, atsReport, resume }) {
   const [downloading, setDownloading] = useState(false);
 
+  const verificationId = useMemo(() => {
+    return getVerificationId(resume?.candidateName || resume?.email || 'TalentTrackUser');
+  }, [resume?.candidateName, resume?.email]);
+
   if (!isOpen || !atsReport) return null;
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleDownloadPdf = async () => {
-    const reportElem = document.getElementById('ats-report-document');
+    const reportElem = document.getElementById('ats-certificate-document');
     if (!reportElem) return;
 
     setDownloading(true);
     try {
       const canvas = await html2canvas(reportElem, {
-        scale: 2,
-        backgroundColor: '#111111',
+        scale: 2.5,
+        backgroundColor: '#ffffff',
         useCORS: true
       });
       const imgData = canvas.toDataURL('image/png');
@@ -35,182 +47,146 @@ export default function ReportPdfView({ isOpen, onClose, atsReport, resume }) {
 
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       const safeName = (resume?.candidateName || 'Candidate').replace(/\s+/g, '_');
-      pdf.save(`ATS_Evaluation_Report_${safeName}.pdf`);
+      pdf.save(`TalentTrack_ATS_Certificate_${safeName}.pdf`);
     } catch (err) {
       console.error('Error generating PDF:', err);
-      // Fallback to print
-      window.print();
     } finally {
       setDownloading(false);
     }
   };
 
-  const candidateDisplayName = resume?.candidateName || 'Job Seeker Candidate';
+  const candidateDisplayName = resume?.candidateName || 'Candidate';
   const score = atsReport.totalAtsScore || 0;
-  const breakdown = atsReport.breakdown || { skillScore: 70, experienceScore: 80, keywordScore: 70, formattingScore: 90 };
+  const extractedSkills = resume?.skills || atsReport.matchedSkills || [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
-        {/* Sticky Header */}
-        <div className="sticky top-0 bg-[#121212] border-b border-[#262626] p-4 flex items-center justify-between z-10 print:hidden">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl relative border border-gray-200">
+        {/* Modal Controls Bar (Print option removed) */}
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-3.5 flex items-center justify-between z-10">
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
-            <span className="text-sm font-bold text-white uppercase tracking-wider">Official ATS Evaluation Certificate</span>
+            <Award className="w-5 h-5 text-blue-600" />
+            <span className="text-sm font-bold text-gray-900">TalentTrack ATS Certificate</span>
           </div>
-          <div className="flex items-center space-x-2">
+
+          <div className="flex items-center space-x-3">
             <button
               onClick={handleDownloadPdf}
               disabled={downloading}
-              className="px-3.5 py-1.5 rounded bg-[#262626] hover:bg-[#333333] text-white text-xs font-semibold flex items-center gap-1.5 border border-[#404040] cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
             >
-              {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-emerald-400" />}
-              <span>Download PDF</span>
+              {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 text-white" />}
+              <span>Download Certificate (PDF)</span>
             </button>
-            <button
-              onClick={handlePrint}
-              className="px-3.5 py-1.5 rounded bg-[#1e1e1e] hover:bg-[#2a2a2a] text-gray-300 text-xs font-semibold flex items-center gap-1.5 border border-[#333333] cursor-pointer"
-            >
-              <Printer className="w-4 h-4" /> Print
-            </button>
+
             <button
               onClick={onClose}
-              className="p-1.5 rounded bg-[#262626] hover:bg-[#333333] text-gray-400 hover:text-white"
+              className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Printable Document Container */}
-        <div className="p-8 sm:p-12 text-gray-200 bg-[#121212] font-sans" id="ats-report-document">
-          <div className="border-b border-[#2a2a2a] pb-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-white uppercase">ATS Analysis & Evaluation Certificate</h1>
-              <p className="text-xs text-gray-400 font-semibold mt-1">TalentTrack • Smart Resume & Recruitment Platform</p>
-            </div>
-            <div className="text-right">
-              <span className="px-3 py-1 bg-[#202020] text-gray-200 border border-[#333333] rounded text-xs font-semibold">
-                Verification ID: #ATS-{Math.floor(100000 + Math.random() * 900000)}
-              </span>
-              <p className="text-[11px] text-gray-400 mt-1">Date: {new Date().toLocaleDateString()}</p>
-            </div>
-          </div>
-
-          {/* Candidate Profile Summary */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-lg bg-[#181818] border border-[#2a2a2a] mb-8 text-xs">
-            <div>
-              <span className="text-gray-400 uppercase font-semibold block text-[10px]">Candidate Name</span>
-              <span className="font-bold text-white text-sm">{candidateDisplayName}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 uppercase font-semibold block text-[10px]">Target Position</span>
-              <span className="font-bold text-white text-sm">{atsReport.jobTitle || 'Target Role'}</span>
-            </div>
-            <div>
-              <span className="text-gray-400 uppercase font-semibold block text-[10px]">Total ATS Score</span>
-              <span className="font-extrabold text-emerald-400 text-base">{score}% Match</span>
-            </div>
-            <div>
-              <span className="text-gray-400 uppercase font-semibold block text-[10px]">Parsed Experience</span>
-              <span className="font-bold text-gray-200 text-sm">{resume?.experienceYears || 0} Years</span>
-            </div>
-          </div>
-
-          {/* Central ATS Score Breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 p-6 bg-[#181818] rounded-xl border border-[#2a2a2a] mb-8 items-center">
-            <div className="md:col-span-4 text-center border-b md:border-b-0 md:border-r border-[#2a2a2a] pb-6 md:pb-0 md:pr-6">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Overall Match Score</span>
-              <div className="text-6xl font-black text-emerald-400 tracking-tight my-2">{score}%</div>
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {score >= 80 ? 'High ATS Fit' : score >= 60 ? 'Moderate Fit' : 'Needs Tailoring'}
-              </span>
-            </div>
-
-            <div className="md:col-span-8 space-y-3">
-              <div>
-                <div className="flex justify-between text-xs mb-1 font-semibold">
-                  <span className="text-gray-300">Technical Skill Coverage (40%)</span>
-                  <span className="text-emerald-400">{breakdown.skillScore ?? 0}%</span>
+        {/* Certificate Document Container - Pristine White Theme */}
+        <div className="p-8 sm:p-12 bg-white" id="ats-certificate-document">
+          <div className="border-[3px] border-[#0f172a] rounded-lg p-6 sm:p-10 relative bg-white">
+            {/* Inner Border Accent */}
+            <div className="border border-gray-300 p-6 sm:p-8 rounded-md bg-white">
+              {/* Header Branding */}
+              <div className="text-center pb-6 border-b border-gray-200">
+                <div className="inline-flex items-center gap-1.5 text-blue-600 font-extrabold text-xs tracking-widest uppercase mb-1">
+                  <Award className="w-4 h-4" />
+                  Official Verification
                 </div>
-                <div className="w-full bg-[#262626] rounded-full h-2">
-                  <div className="bg-emerald-500 h-2 rounded-full" style={{ width: `${breakdown.skillScore ?? 0}%` }} />
+                <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-wider uppercase">
+                  TalentTrack
+                </h1>
+                <p className="text-xs text-gray-500 font-medium tracking-wide mt-1">
+                  Smart Resume & Recruitment Platform
+                </p>
+                <div className="inline-block mt-3 px-3 py-1 bg-gray-100 text-gray-800 text-[11px] font-bold rounded uppercase tracking-wider">
+                  Certificate of ATS Resume Evaluation
                 </div>
               </div>
 
-              <div>
-                <div className="flex justify-between text-xs mb-1 font-semibold">
-                  <span className="text-gray-300">Experience Alignment (30%)</span>
-                  <span className="text-blue-400">{breakdown.experienceScore ?? 0}%</span>
-                </div>
-                <div className="w-full bg-[#262626] rounded-full h-2">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${breakdown.experienceScore ?? 0}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-xs mb-1 font-semibold">
-                  <span className="text-gray-300">Keyword Density & Match (20%)</span>
-                  <span className="text-amber-400">{breakdown.keywordScore ?? 0}%</span>
-                </div>
-                <div className="w-full bg-[#262626] rounded-full h-2">
-                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${breakdown.keywordScore ?? 0}%` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <h4 className="text-xs font-bold uppercase text-emerald-400 mb-2 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Matched Skills & Keywords ({atsReport.matchedSkills?.length || 0})
-              </h4>
-              <div className="p-3 bg-[#181818] rounded border border-[#2a2a2a] min-h-[80px] flex flex-wrap gap-1.5">
-                {(atsReport.matchedSkills || []).map((s, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-emerald-500/10 text-emerald-300 text-[11px] rounded border border-emerald-500/20">
-                    {s}
+              {/* Verification ID & Date Strip */}
+              <div className="flex flex-col sm:flex-row justify-between items-center py-4 text-xs text-gray-600 border-b border-gray-100 gap-2">
+                <div>
+                  <span className="font-semibold text-gray-500">Verification ID: </span>
+                  <span className="font-mono font-bold text-gray-900 text-sm tracking-wider bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                    {verificationId}
                   </span>
-                ))}
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500">Issued On: </span>
+                  <span className="font-semibold text-gray-900">{new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <h4 className="text-xs font-bold uppercase text-rose-400 mb-2 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> Missing Skills / Gaps ({atsReport.missingSkills?.length || 0})
-              </h4>
-              <div className="p-3 bg-[#181818] rounded border border-[#2a2a2a] min-h-[80px] flex flex-wrap gap-1.5">
-                {(atsReport.missingSkills || []).map((s, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-rose-500/10 text-rose-300 text-[11px] rounded border border-rose-500/20">
-                    {s}
-                  </span>
-                ))}
-                {(atsReport.missingSkills || []).length === 0 && (
-                  <span className="text-xs text-gray-500 italic">No missing skill gaps identified</span>
+              {/* Candidate Certification Statement */}
+              <div className="text-center py-8 space-y-2">
+                <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">
+                  This document certifies that the resume credentials of
+                </p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                  {candidateDisplayName}
+                </h2>
+                <p className="text-xs text-gray-600 max-w-lg mx-auto leading-relaxed pt-1">
+                  have been analyzed and certified through the TalentTrack automated ATS evaluation system.
+                </p>
+              </div>
+
+              {/* ATS Score Card */}
+              <div className="bg-[#f8fafc] border border-gray-200 rounded-xl p-6 text-center my-4 max-w-md mx-auto shadow-xs">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest block mb-1">
+                  Calculated ATS Compatibility Score
+                </span>
+                <div className="text-5xl font-black text-emerald-600 tracking-tight my-2">
+                  {score}%
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{score >= 80 ? 'Verified Tier-1 ATS Fit' : score >= 60 ? 'Verified Moderate Readiness' : 'Needs Optimization'}</span>
+                </div>
+              </div>
+
+              {/* Extracted Skills Section */}
+              <div className="pt-6 pb-4">
+                <div className="text-center mb-3">
+                  <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                    Extracted Skills ({extractedSkills.length})
+                  </h3>
+                  <div className="w-12 h-0.5 bg-blue-600 mx-auto mt-1" />
+                </div>
+
+                {extractedSkills.length > 0 ? (
+                  <div className="flex flex-wrap justify-center gap-1.5 max-h-48 overflow-hidden pt-1">
+                    {extractedSkills.map((skill, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2.5 py-1 bg-white text-gray-800 text-xs font-medium rounded border border-gray-300 shadow-2xs"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 italic text-center">No explicit skills recorded.</p>
                 )}
               </div>
+
+              {/* Certificate Authentication Footer */}
+              <div className="pt-8 mt-6 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center text-[11px] text-gray-500 gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-emerald-600" />
+                  <span className="font-semibold text-gray-700">TalentTrack Verified ATS Document</span>
+                </div>
+                <div className="font-mono text-gray-500 text-[10px]">
+                  Verification Code: {verificationId}
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="mb-8">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300 mb-3 border-b border-[#262626] pb-1">
-              Actionable ATS Optimization Recommendations
-            </h3>
-            <ul className="space-y-2 text-xs text-gray-300">
-              {(atsReport.suggestions || []).map((s, i) => (
-                <li key={i} className="p-2.5 bg-[#181818] rounded border border-[#2a2a2a] flex items-start gap-2">
-                  <span className="font-bold text-gray-400 shrink-0">#{i + 1}</span>
-                  <div>
-                    <strong className="text-white block mb-0.5">{s.title}</strong>
-                    <span className="text-gray-400">{s.description}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="pt-6 border-t border-[#2a2a2a] flex justify-between items-center text-[10px] text-gray-500">
-            <span>Verified by TalentTrack Engine</span>
-            <span>Generated from authentic candidate data</span>
           </div>
         </div>
       </div>

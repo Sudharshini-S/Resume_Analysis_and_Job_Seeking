@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
-    // 1. Initial cached user
+    // 1. Initial cached user - immediately display if available so user is never blocked
     const savedUser = localStorage.getItem('smart_ats_active_user');
     if (savedUser) {
       try {
@@ -36,57 +36,75 @@ export function AuthProvider({ children }) {
         if (parsed.role === ROLES.RECRUITER) setActiveTab('post_jobs');
         else if (parsed.role === ROLES.ADMIN) setActiveTab('overview');
         else if (parsed.role === ROLES.COUNSELOR) setActiveTab('roster');
+        setLoading(false);
       } catch (e) {}
     }
 
-    // 2. Listen to real Firebase Auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const isAdmin = user.email?.toLowerCase() === 'admin@gmail.com';
-        let userData = {
-          uid: user.uid,
-          name: isAdmin ? 'System Administrator' : (user.displayName || user.email.split('@')[0]),
-          email: user.email,
-          role: isAdmin ? ROLES.ADMIN : ROLES.JOB_SEEKER,
-          atsScore: 0,
-          skills: []
-        };
-
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            // Live Firestore data
-            userData = { uid: user.uid, ...userDoc.data() };
-            if (isAdmin) {
-              userData.role = ROLES.ADMIN;
-            }
-          } else {
-            // Save initial profile to Firestore if missing
-            await setDoc(doc(db, 'users', user.uid), userData, { merge: true });
-          }
-        } catch (err) {
-          console.warn('Firestore user fetch notice:', err.message);
-        }
-
-        setCurrentUser(userData);
-        localStorage.setItem('smart_ats_active_user', JSON.stringify(userData));
-        if (userData.role === ROLES.RECRUITER) {
-          setActiveTab('post_jobs');
-        } else if (userData.role === ROLES.ADMIN) {
-          setActiveTab('overview');
-        } else if (userData.role === ROLES.COUNSELOR) {
-          setActiveTab('roster');
-        } else {
-          setActiveTab('upload');
-        }
-      } else {
-        setCurrentUser(null);
-        localStorage.removeItem('smart_ats_active_user');
-      }
+    // Fallback safety timeout: ensure loading state never hangs indefinitely
+    const safetyTimer = setTimeout(() => {
       setLoading(false);
-    });
+    }, 2000);
 
-    return () => unsubscribe();
+    // 2. Listen to real Firebase Auth state changes
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user) => {
+        clearTimeout(safetyTimer);
+        if (user) {
+          const isAdmin = user.email?.toLowerCase() === 'admin@gmail.com';
+          let userData = {
+            uid: user.uid,
+            name: isAdmin ? 'System Administrator' : (user.displayName || user.email.split('@')[0]),
+            email: user.email,
+            role: isAdmin ? ROLES.ADMIN : ROLES.JOB_SEEKER,
+            atsScore: 0,
+            skills: []
+          };
+
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              // Live Firestore data
+              userData = { uid: user.uid, ...userDoc.data() };
+              if (isAdmin) {
+                userData.role = ROLES.ADMIN;
+              }
+            } else {
+              // Save initial profile to Firestore if missing
+              await setDoc(doc(db, 'users', user.uid), userData, { merge: true });
+            }
+          } catch (err) {
+            console.warn('Firestore user fetch notice:', err.message);
+          }
+
+          setCurrentUser(userData);
+          localStorage.setItem('smart_ats_active_user', JSON.stringify(userData));
+          if (userData.role === ROLES.RECRUITER) {
+            setActiveTab('post_jobs');
+          } else if (userData.role === ROLES.ADMIN) {
+            setActiveTab('overview');
+          } else if (userData.role === ROLES.COUNSELOR) {
+            setActiveTab('roster');
+          } else {
+            setActiveTab('upload');
+          }
+        } else {
+          setCurrentUser(null);
+          localStorage.removeItem('smart_ats_active_user');
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.warn('Firebase auth state error:', error);
+        clearTimeout(safetyTimer);
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   const loginWithEmail = async (email, password) => {

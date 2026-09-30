@@ -240,7 +240,7 @@ export default function CounselorDashboard() {
             </div>
             <div className="panel-card bg-white">
               <span className="text-gray-500 block font-semibold">Industry Experience</span>
-              <span className="text-base font-bold text-gray-900">{inspectedStudent.experienceYears || 0} Years</span>
+              <span className="text-base font-bold text-gray-900">{inspectedStudent.experienceYears ? `${inspectedStudent.experienceYears} Years` : '-'}</span>
             </div>
             <div className="panel-card bg-white">
               <span className="text-gray-500 block font-semibold">Placement Readiness</span>
@@ -266,17 +266,7 @@ export default function CounselorDashboard() {
             )}
           </div>
 
-          {/* Education */}
-          {inspectedStudent.education && inspectedStudent.education.length > 0 && (
-            <div className="panel-card bg-white space-y-2">
-              <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">Identified Education:</h3>
-              <ul className="list-disc list-inside text-xs text-gray-700 space-y-1">
-                {inspectedStudent.education.map((edu, i) => (
-                  <li key={i}>{edu}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+
         </div>
 
         {/* Applied Positions by this student */}

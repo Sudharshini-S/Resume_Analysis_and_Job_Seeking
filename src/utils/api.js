@@ -83,6 +83,7 @@ export async function saveUserResume(userId, parsedResume, fileName = '', userPr
       skills: parsedResume.skills || [],
       skillsCategorized: parsedResume.skillsCategorized || {},
       education: parsedResume.education || [],
+      projects: parsedResume.projects || [],
       rawText: parsedResume.rawText || '',
       fileName: fileName || parsedResume.fileName || 'Resume Document',
       parsedAt: parsedResume.parsedAt || new Date().toISOString(),

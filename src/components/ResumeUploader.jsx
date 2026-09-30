@@ -245,41 +245,51 @@ export default function ResumeUploader({ onResumeParsed, currentResume, atsRepor
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-800 font-bold">
-                    Extracted Technical Skills ({currentResume.skills?.length || 0}):
+                    Extracted Skills ({currentResume.skills?.length || 0}):
                   </span>
-                  <span className="text-[11px] text-gray-500">Separately identified, non-grouped technical competencies</span>
+                  <span className="text-[11px] text-gray-500">Categorized competencies</span>
                 </div>
 
-                {currentResume.skills && currentResume.skills.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {currentResume.skills.map((skill, idx) => (
-                      <span key={idx} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200 font-medium text-xs">
-                        {skill}
-                      </span>
+                {currentResume.skillsCategorized && Object.keys(currentResume.skillsCategorized).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(currentResume.skillsCategorized).map(([cat, list]) => (
+                      list && list.length > 0 ? (
+                        <div key={cat} className="space-y-1">
+                          <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wider block">
+                            {cat} ({list.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {list.map((skill, idx) => (
+                              <span key={idx} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200 font-medium text-xs">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 italic">No explicit skills extracted.</p>
+                  currentResume.skills && currentResume.skills.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {currentResume.skills.map((skill, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200 font-medium text-xs">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 italic">No explicit skills extracted.</p>
+                  )
                 )}
               </div>
 
-              {currentResume.education && currentResume.education.length > 0 && (
-                <div>
-                  <span className="text-gray-800 font-bold block mb-1">Identified Education Credentials:</span>
-                  <ul className="list-disc list-inside text-gray-600 space-y-0.5">
-                    {currentResume.education.map((edu, idx) => (
-                      <li key={idx}>{edu}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
-              {currentResume.experienceYears > 0 && (
-                <div>
-                  <span className="text-gray-800 font-bold block mb-0.5">Estimated Industry Experience:</span>
-                  <span className="text-gray-600">{currentResume.experienceYears} Years</span>
-                </div>
-              )}
+
+              <div>
+                <span className="text-gray-800 font-bold block mb-0.5">Estimated Industry Experience:</span>
+                <span className="text-gray-600">{currentResume.experienceYears ? `${currentResume.experienceYears} Years` : '-'}</span>
+              </div>
             </div>
           </div>
 
